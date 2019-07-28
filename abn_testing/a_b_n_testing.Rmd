@@ -1,0 +1,214 @@
+---
+title: "A/B/n Testing with R"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+
+
+```{r, echo=FALSE}
+
+# https://rmarkdown.rstudio.com/articles_docx.html
+# https://csrgxtu.github.io/2015/03/20/Writing-Mathematic-Fomulars-in-Markdown/
+# https://www.stat.cmu.edu/~cshalizi/rmarkdown/
+```
+
+The libraries that we are going to use
+```{r, message=FALSE, warning=FALSE}
+library(multcomp)
+
+
+```
+### Description
+
+**A/B/n testing** is an online technique used for comparing one **Control** to more versions of the original, with the purpose of determining the best performing one. The variants can be Subject Lines, Email Bodies, Web Pages, App Screens, Banners etc and the **KPI** can be the Open Rate, the Click Through Rate the Conversion Rate etc depending on company's objectives. Our goal is to give a brief view of A/B and A/B/n focusing mainly on R part without diving into maths details  
+
+
+
+### Confidence Intervals
+When we test a variant we get the observed "Response Rate" `p` which is just an estimate. Usually it is better to give a also the range of it by applying the Confidence Intervals.
+
+$$\hat{p}\pm Z_{\frac{\alpha}{2}}\sqrt{\frac{\hat{p}(1-\hat{p})}{n}}$$
+
+where:  
+$\hat{p}$: Observed Proportion of the variant.  
+$\alpha$: The Level of Significance which is usally 5%.    
+$Z:$ The Standard Normal Distribution.    
+$n$: Is the sample size of the variant.  
+
+**Example**: Using R calculate the 95% Confidence Interval of the variant $V_1$ which has **150 Clicks** and **900 Impressions**
+
+
+
+```{r}
+CI<-prop.test(x=150,n=900, correct = FALSE)
+
+as.vector(CI$conf.int)
+```
+
+
+As we can see the observed CTR $\hat{p}$ is `r round(150/900,4)` and the actual $p$ lies between (`r round(as.vector(CI$conf.int),4)`)
+
+
+### Hypothesis Testing of One Variant
+
+As we saw above the observed CTR of the $V_1$ was 16.67% and let's assume that they asked us if the actual CTR of the $V_1$ could be 17%. In order to answer this type of questions we apply Hypothesis Testing of Proportion. In this example we apply the 2-sided tests. The Hypothesis can be written as:
+
+$$H_0: p=0.17$$
+$$H_1: p\neq 0.17$$
+
+**Example**: Using R test if the actual $p$ of variant $V_1$ could be considered as **0.17** and then test again for **0.20**
+
+**Hypothesis Testing for p=0.17**
+```{r}
+
+
+t1<-prop.test(x=150,n=900, p=0.17, correct = FALSE)
+
+t1
+
+
+```
+
+
+**Hypothesis Testing for p=0.19**
+```{r}
+
+
+t2<-prop.test(x=150,n=900, p=0.20, correct = FALSE)
+
+t2
+```
+
+In order to reject the **Null Hypothesis** we want the p-value to be less than the level of significance $\alpha$ which is usually 5%. In our case we did not reject the Null Hypothesis for p=17% (p-value=`r round(t1$p.value,4)`) but we rejected for p=19% (p-value=`r round(t2$p.value,4)`)
+
+### Hypothesis Testing of Two Variants
+We can apply the Z-Tet of proportions when we want to compare two variants about their Response Rates. Without going into details we represent the formula of the Z standard Normal of the difference of two binomial distributions.
+
+$$Z=\frac{\hat{p_1}-{\hat{p_2}}}{\sqrt{\hat{p}(1-\hat{p})(\frac{1}{n1}+\frac{1}{n2})}}$$
+where $\hat{p}=\frac{x_1+x_2}{n_1+n_2}$ is the average of the Response Rate of the two variants.  
+The Hypothesis can be formulated as:
+
+$$H_0: p_1=p_2$$
+$$H_1: p_1\neq p_2$$
+
+**Example**: Using R calculate compare the variant $V_1$ which has **120 Clicks and 800 Impressions** with variant $V_2$ which has **100 Clicks and 700 Impressions** 
+
+
+```{r}
+
+# define a vector of the responses
+x<-c(120,100)
+
+# define a vector of the impressions
+n<-c(800,700)
+
+test1<-prop.test(x,n, correct = FALSE)
+test1
+
+```
+Notice: The z-test comparing two proportions is equivalent to the chi-square test of independence, and the prop.test( ) procedure formally calculates the chi-square test. The p-value from the z-test for two proportions is equal to the p-value from the chi-square test, and the z-statistic is equal to the square root of the chi-square statistic in this situation.  
+As we can see  R provides as a nice output which shows the proportion of each variant as well as the p-value. In our case we do not reject the null hypothesis since the p-value (`r round(test1$p.value,4)`) is greater than 5%.
+
+### Hypothesis Testing of k Variants
+In most cases we test more than two variants and someone can ask if all of these variants can be considered as equivalent or not (i.e. if they their responses rates (RR) are equivalent).  
+In order to answer this question we can apply the **Chi-Square Test** $\chi^2$.  
+The Null and the Alternative hypothesis can be written as:  
+$$H_0: p_1=p_2=...=p_K$$
+$$H_1: The~RRs~Are~Not~All~Equal$$
+**Example**: Assume that we have 8 variants with the following clicks (80,85,90,95,100,105,110,115) respectively and all of them have 1000 impressions. Using R determine if all these variants can be considered equivalent.
+
+```{r}
+x<-seq(from=80, by=5, length.out=8)
+n<-rep(1000,8)
+
+chisqtest<-prop.test(x,n)
+
+chisqtest
+```
+
+As see we can consider all these 8 variants as equivalent (p-value: `r round(chisqtest$p.value,4)`) . However if we compare just the first one with the last one it comes out their difference is statistically significant. This is due to the effect of "Multiple Comparisons".
+
+
+### Multiple Pairwise Comparisons Without P-Value Adjustments
+Using R we can easily represent the P-values of all pairwise comparisons. Let's do it using the data of the above example
+
+```{r}
+x<-seq(from=80, by=5, length.out=8)
+n<-rep(1000,8)
+ppt<-pairwise.prop.test(x, n, p.adjust.method = "none")
+
+ppt
+```
+
+
+### Multiple Pairwise Comparisons With P-Value Adjustments
+
+Since we are dealing with Multiple Comparisons it is common to apply the p-value adjustments. R provides us the following methods of p-value adjustments.
+
+{"holm", "hochberg", "hommel", "bonferroni", "BH", "BY",  "fdr", "none"}
+
+Let's apply the above example using the **False Discovery Rate** as method of adjustment.
+
+
+```{r}
+x<-seq(from=80, by=5, length.out=8)
+n<-rep(1000,8)
+ppt<-pairwise.prop.test(x, n, p.adjust.method = "fdr")
+
+ppt
+```
+
+As we can see now, none of the pairs can be considered as statistically significant different.
+
+### Multiple Pairwise Comparisons of Control Variant With P-Value Adjustments
+Sometimes we want to compare only the Control versus the rest variants. In this case we need to take the p-values of the Control vs the rest variants using none adjustment and then to apply the p-value adjustments.  
+Again let's use the same data and assuming that the Control is the $V_1$
+
+```{r}
+
+x<-seq(from=80, by=5, length.out=8)
+n<-rep(1000,8)
+ppt<-pairwise.prop.test(x, n, p.adjust.method = "none")
+
+# this vector is the p-values of variant 1 versus the rest 7 variants without adjustments
+pvalue_vector<-ppt$p.value[,1]
+
+pvalue_vector
+```
+
+```{r}
+# now apply the pvalue adjustment to the vector of pvalues
+p.adjust(pvalue_vector, method = "fdr")
+```
+
+### Multiple Comparisons applying TukeyHSD Test
+We can also run a Logistic Regression applying the **Tukey Test**. Let's apply it  
+
+
+```{r, warning=FALSE}
+# check for the multicmp package if exists otherwise install it
+
+if(!require(multcomp)){
+    install.packages("multcomp")
+    library(multcomp)
+}
+
+
+
+dataset<-data.frame(x=seq(from=80, by=5, length.out=8), n=rep(1000,8), ID=factor(c(1:8)))
+dataset
+model1<- glm(formula = cbind(x, n-x) ~ ID, family = binomial(	link = "logit"), data=dataset)
+
+# Here we can see the comparisons of variant 1 which is the reference level versus the rest 
+summary(model1)
+
+
+# Tukey multiple comparisons
+summary(glht(model1, mcp(ID="Tukey")))
+```
+
+
