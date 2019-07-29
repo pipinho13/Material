@@ -1,9 +1,9 @@
 ---
 title: "A/B/n Testing with R"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
   word_document: default
 ---
 
@@ -74,7 +74,7 @@ t1
 ```
 
 
-**Hypothesis Testing for p=0.19**
+**Hypothesis Testing for p=0.20**
 ```{r}
 
 
@@ -83,7 +83,7 @@ t2<-prop.test(x=150,n=900, p=0.20, correct = FALSE)
 t2
 ```
 
-In order to reject the **Null Hypothesis** we want the p-value to be less than the level of significance $\alpha$ which is usually 5%. In our case we did not reject the Null Hypothesis for p=17% (p-value=`r round(t1$p.value,4)`) but we rejected for p=19% (p-value=`r round(t2$p.value,4)`)
+In order to reject the **Null Hypothesis** we want the p-value to be less than the level of significance $\alpha$ which is usually 5%. In our case we did not reject the Null Hypothesis for p=17% (p-value=`r round(t1$p.value,4)`) but we rejected for p=20% (p-value=`r round(t2$p.value,4)`)
 
 ### Hypothesis Testing of Two Variants
 We can apply the Z-Tet of proportions when we want to compare two variants about their Response Rates. Without going into details we represent the formula of the Z standard Normal of the difference of two binomial distributions.
